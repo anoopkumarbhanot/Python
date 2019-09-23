@@ -1,0 +1,60 @@
+import urllib
+import re
+from datetime import datetime
+from datetime import date
+import csv
+ 
+def get_html(url):
+    """Grab html code of a page given its URL"""
+    usock = urllib.urlopen(url)
+    html = usock.read()
+    usock.close()
+    return html
+res = get_html("http://www.mtv.de/charts/c6mc86/single-top-100?expanded=true")
+main_url = re.search('(?<=link rel="canonical" href=")(.*)', res)
+req_main_url = main_url.group().replace('"', "").replace("/>", "")
+itemBox = re.findall(r'<div class="chartItemsCtn">.*?<div class="chartAdBox large float-center"', res)
+allItems = itemBox[0].split('<div class="chartItemsBox"')
+allItems = allItems[1:]
+now = datetime.now()
+current_time = now.strftime("%H:%M:%S")
+date = date.today()
+wd = date.weekday()
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+day = days[wd]
+day_date_time = day + " " + str(date) + " " + current_time
+res_list = list()
+for eachItem in allItems:
+    album = re.findall(r'<div class="videoTitle">(.*?)</div>', eachItem)
+    for each in album:
+        album = each
+    artist = re.findall(r'<span>(.*?)</span>', eachItem)
+    if not artist:
+        artist = re.findall(r'<div class="artist regular-content">(.*?)</div>', eachItem)
+    for each in artist:
+        artist = each
+    url = re.search(r'</span></a></div><a href="(.*?)class="chartItemImage linkedVideo image-zoom"', eachItem)
+    if url:
+        url = url.group(1)
+    else:
+        url = ""
+    res_dict = dict()
+    res_dict.update({"Title": album})
+    res_dict.update({"Artist": artist})
+    res_dict.update({"Extraction Time": day_date_time})
+    res_dict.update({"Locale": "de - de"})
+    res_dict.update({"Language": "de"})
+    res_dict.update({"Tag": ""})
+    res_dict.update({"Main Url": req_main_url})
+    res_dict.update({"Supported Url": ""})
+    res_dict.update({"Url": url})
+    res_list.append(res_dict)
+print(res_list)
+print(len(res_list))
+csv_columns = ['Title', 'Artist', 'Extraction Time', 'Locale', 'Language', 'Tag', 'Main Url', 'Supported Url', 'Url']
+csv_file = "MTV.csv"
+with open(csv_file, 'w') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+    writer.writeheader()
+    for data in res_list:
+        writer.writerow(data)
